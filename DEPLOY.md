@@ -18,65 +18,138 @@ Deploy **AK IMAX** to production using:
 
 ## Part 1: Deploy Backend + Database on Render
 
-### Step 1: Push your code to GitHub
+### ⭐ Recommended: Use Native Node.js (not Docker)
 
-Ensure your repo is on GitHub (or GitLab).
+Use the steps below. **Do not** choose "Docker" when creating the service.
 
-### Step 2: Create Render account and connect repo
+---
 
-1. Go to [render.com](https://render.com) and sign up
-2. **New** → **Blueprint** (or **New** → **Web Service** for manual setup)
-3. Connect your GitHub repository containing this project
+### Step 1: Push code to GitHub
 
-### Step 3: Deploy with Blueprint (recommended)
+1. Open terminal in your project folder
+2. Run:
+   ```bash
+   git add .
+   git commit -m "Prepare for Render deploy"
+   git push origin main
+   ```
+3. Replace `main` with your branch name if different
 
-If using the `render.yaml` in this repo:
+---
 
-1. **New** → **Blueprint** → Connect your repo
-2. Render will detect `render.yaml` and create:
-   - PostgreSQL database (`imaxweb-db`)
-   - Web service (`imaxweb-api`)
+### Step 2: Create Render account
 
-3. **Set these environment variables** in the `imaxweb-api` service (Dashboard → Environment):
+1. Go to [render.com](https://render.com)
+2. Click **Get Started**
+3. Sign up with GitHub (recommended for easy repo link)
 
-   | Key | Value | Notes |
-   |-----|-------|-------|
-   | `API_URL` | `https://imaxweb-api.onrender.com` | Your backend URL (replace with actual URL after first deploy) |
-   | `CORS_ORIGIN` | `https://your-frontend.vercel.app` | Your frontend URL (add both Vercel/Netlify URLs if you deploy to both) |
-   | `ADMIN_EMAIL` | `your-admin@example.com` | Admin login email |
-   | `ADMIN_PASSWORD` | `your-secure-password` | Admin login password (min 6 chars) |
+---
 
-   **Note:** `DATABASE_URL` and `JWT_SECRET` are auto-configured by the Blueprint.
+### Step 3: Create database first
 
-### Step 4: Manual setup (if not using Blueprint)
+1. In the Render Dashboard, click **New +**
+2. Select **PostgreSQL**
+3. Configure:
+   - **Name:** `imaxweb-db`
+   - **Database:** `imaxweb` (or leave default)
+   - **Region:** Choose closest to you
+   - **Plan:** Free
+4. Click **Create Database**
+5. Wait until status is **Available**
+6. Go to the database page → **Connect** → copy the **Internal Database URL** (you’ll need it for the Web Service)
 
-1. **Create PostgreSQL**  
-   - **New** → **PostgreSQL**  
-   - Name: `imaxweb-db`  
-   - Plan: Free  
+---
 
-2. **Create Web Service**  
-   - **New** → **Web Service**  
-   - Connect repo  
-   - **Root Directory:** `backend`  
-   - **Runtime:** Node  
-   - **Build Command:** `npm install && npx prisma generate && npm run build`  
-   - **Start Command:** `npm run start`  
-   - **Release Command:** `npx prisma migrate deploy && npm run db:seed`  
+### Step 4: Create Web Service (backend API)
 
-3. **Environment variables** (same as above, plus):
-   - `DATABASE_URL` (from the PostgreSQL service: Connect → Internal)
-   - `JWT_SECRET` (generate a strong random string)
+1. Click **New +** → **Web Service**
+2. Connect your GitHub account if asked
+3. Find your `imaxweb` repo and click **Connect**
+4. Configure:
 
-4. Deploy.
+   | Setting | Value |
+   |---------|-------|
+   | **Name** | `imaxweb-api` |
+   | **Region** | Same as database |
+   | **Branch** | `main` |
+   | **Root Directory** | `backend` ⚠️ Important |
+   | **Runtime** | **Node** (not Docker) |
+   | **Build Command** | `npm install && npx prisma generate && npm run build` |
+   | **Start Command** | `npm run start` |
 
-### Step 5: Get your backend URL
+5. Under **Advanced** → **Release Command**, add:
+   ```
+   npx prisma migrate deploy && npm run db:seed
+   ```
 
-After deploy, your API will be at:
-`https://imaxweb-api.onrender.com`  
-(or `https://imaxweb-api-xxxx.onrender.com`)
+---
 
-**Render free tier note:** The service spins down after ~15 minutes of inactivity. The first request after that can take 30–60 seconds to respond.
+### Step 5: Add environment variables
+
+1. On the Web Service page, go to **Environment**
+2. Click **Add Environment Variable**
+3. Add these one by one:
+
+   | Key | Value | Where to get it |
+   |-----|-------|-----------------|
+   | `NODE_ENV` | `production` | Type manually |
+   | `DATABASE_URL` | `postgresql://...` | From PostgreSQL service → Connect → **Internal** URL |
+   | `JWT_SECRET` | Random string | Type a long random string (e.g. 32+ chars) or generate one |
+   | `API_URL` | `https://imaxweb-api.onrender.com` | After first deploy, use your actual URL (see Step 6) |
+   | `CORS_ORIGIN` | `https://your-site.vercel.app` | Your frontend URL; use `*` temporarily if no frontend yet |
+   | `ADMIN_EMAIL` | `admin@yourdomain.com` | Your admin email |
+   | `ADMIN_PASSWORD` | `YourSecurePassword123` | Your admin password (min 6 chars) |
+
+4. Click **Save Changes**
+
+---
+
+### Step 6: Deploy
+
+1. Click **Create Web Service**
+2. Render will build and deploy (first run can take 5–10 minutes)
+3. When done, copy your service URL (e.g. `https://imaxweb-api.onrender.com`)
+4. If `API_URL` was a placeholder, update it in **Environment** with this URL and trigger **Manual Deploy**
+
+---
+
+### Step 7: Test the backend
+
+1. Visit: `https://your-service.onrender.com/api/health`
+2. You should see: `{"status":"ok","timestamp":"..."}`
+
+---
+
+### Alternative: Blueprint (one-click)
+
+If you prefer auto-setup:
+
+1. **New +** → **Blueprint**
+2. Connect your repo
+3. Render reads `render.yaml` and creates DB + Web Service
+4. You still need to set in **Environment** (marked `sync: false`):
+   - `API_URL`
+   - `CORS_ORIGIN`
+   - `ADMIN_EMAIL`
+   - `ADMIN_PASSWORD`
+
+---
+
+### ⚠️ If you used Docker and got "npm ci" error
+
+You may have selected **Docker** as the runtime. This project is set up for **Node.js**.
+
+1. Go to your Web Service → **Settings**
+2. Change **Runtime** from Docker to **Node**
+3. Set **Root Directory** to `backend`
+4. Set Build and Start commands as in Step 4 above
+5. **Manual Deploy** → **Clear build cache & deploy**
+
+---
+
+### Render free tier note
+
+The service sleeps after ~15 minutes of inactivity. The first request after that can take 30–60 seconds to respond.
 
 ---
 
@@ -169,9 +242,11 @@ The app stores images in `uploads/` on the server. On Render’s free tier the f
 
 | Issue | Fix |
 |-------|-----|
-| CORS errors | Add the frontend URL to `CORS_ORIGIN` on Render |
-| 401 on admin routes | Check `JWT_SECRET` on backend |
-| Images not loading | Ensure `API_URL` on backend matches the deployed URL |
-| Slow first request | Normal on Render free tier; service spins up after inactivity |
-| Migration fails | Ensure `DATABASE_URL` is set and correct |
-| Build fails | Check Node version and that `rootDir` / `base` is set correctly |
+| **"npm ci" / "package-lock.json" error** | You're using Docker. Switch to **Node** runtime and set Root Directory to `backend`. Or use the Dockerfile we fixed (it now uses `npm install`). |
+| **CORS errors** | Add your frontend URL to `CORS_ORIGIN` on Render → Environment. Use comma for multiple: `https://a.vercel.app,https://b.netlify.app` |
+| **401 on admin routes** | Verify `JWT_SECRET` is set. Log out and log in again with `ADMIN_EMAIL` and `ADMIN_PASSWORD`. |
+| **Images not loading** | Set `API_URL` to your backend URL, e.g. `https://imaxweb-api.onrender.com` |
+| **Slow first request** | Normal on free tier; service wakes from sleep. First request can take 30–60 seconds. |
+| **Migration fails** | Check `DATABASE_URL` (use Internal URL from PostgreSQL). Ensure migrations exist in `backend/prisma/migrations/`. |
+| **Build fails** | Root Directory must be `backend`. Build command: `npm install && npx prisma generate && npm run build` |
+| **"Module not found" / Prisma errors** | Prisma must run before build. Order: `prisma generate` → `npm run build` |
