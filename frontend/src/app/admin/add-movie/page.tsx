@@ -332,7 +332,7 @@ export default function AddMoviePage() {
                 <input
                   type="text"
                   placeholder="Character"
-                  value={c.characterName}
+                  value={c.characterName ?? ''}
                   onChange={(e) => updateCast(i, 'characterName', e.target.value)}
                   className="flex-1 px-3 py-2 rounded-lg glass border border-white/10 text-sm"
                 />

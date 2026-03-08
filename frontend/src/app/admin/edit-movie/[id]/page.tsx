@@ -13,7 +13,7 @@ export default function EditMoviePage() {
   const [genres, setGenres] = useState<Genre[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [audioLanguages, setAudioLanguages] = useState<AudioLanguage[]>([]);
-  const [form, setForm] = useState<CreateMovieInput & { cast: { actorName: string; characterName: string }[] } | null>(null);
+  const [form, setForm] = useState<CreateMovieInput & { cast: { actorName: string; characterName?: string }[] } | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -370,7 +370,7 @@ export default function EditMoviePage() {
                 <input
                   type="text"
                   placeholder="Character"
-                  value={c.characterName}
+                  value={c.characterName ?? ''}
                   onChange={(e) => updateCast(i, 'characterName', e.target.value)}
                   className="flex-1 px-3 py-2 rounded-lg glass border border-white/10 text-sm"
                 />
