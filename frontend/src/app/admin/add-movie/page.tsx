@@ -49,10 +49,12 @@ export default function AddMoviePage() {
     try {
       const payload: CreateMovieInput = {
         ...form,
-        cast: form.cast.filter((c) => c.actorName.trim()).map((c) => ({
-          actorName: c.actorName.trim(),
-          characterName: c.characterName.trim() || undefined,
-        })),
+        cast: form.cast
+          .filter((c) => c.actorName.trim())
+          .map((c) => ({
+            actorName: c.actorName.trim(),
+            characterName: c.characterName?.trim() || undefined,
+          })),
       };
       await api.admin.movies.create(token, payload);
       router.push('/admin/movies');
