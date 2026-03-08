@@ -1,0 +1,6 @@
+# Netlify config for frontend (Next.js) - monorepo
+# Netlify auto-detects Next.js and uses the Essential Next.js plugin
+
+[build]
+  base = "frontend"
+  command = "npm run build"

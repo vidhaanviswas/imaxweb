@@ -1,0 +1,40 @@
+# Render Blueprint: imaxweb backend + PostgreSQL
+# See DEPLOY.md for full deployment instructions
+
+databases:
+  - name: imaxweb-db
+    databaseName: imaxweb
+    plan: free
+
+services:
+  - type: web
+    runtime: node
+    name: imaxweb-api
+    rootDir: backend
+    plan: free
+
+    buildCommand: npm install && npx prisma generate && npm run build
+    preDeployCommand: npx prisma migrate deploy && npm run db:seed
+    startCommand: npm run start
+
+    healthCheckPath: /api/health
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: imaxweb-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: API_URL
+        sync: false
+        # Set in Dashboard: https://imaxweb-api.onrender.com (or your service URL)
+      - key: CORS_ORIGIN
+        sync: false
+        # Set in Dashboard: your frontend URL (e.g. https://imaxweb.vercel.app)
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false

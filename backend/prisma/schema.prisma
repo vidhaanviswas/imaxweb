@@ -1,0 +1,221 @@
+// Prisma schema for Movie Discovery Platform
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  password      String
+  role          Role     @default(USER)
+  tokenVersion  Int      @default(0) @map("token_version")  // Incremented on password change; invalidates old JWTs
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Genre {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  movies    MovieGenre[]
+
+  @@map("genres")
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  movies    Movie[]
+
+  @@map("categories")
+}
+
+model Collection {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?  @db.Text
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  movies      MovieCollection[]
+
+  @@map("collections")
+}
+
+model MovieCollection {
+  movieId      String
+  collectionId String     @map("collection_id")
+  order        Int        @default(0)
+  movie        Movie      @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@id([movieId, collectionId])
+  @@map("movie_collections")
+}
+
+model Movie {
+  id            String    @id @default(cuid())
+  title         String
+  slug          String    @unique
+  description   String?   @db.Text
+  releaseDate   DateTime  @map("release_date")
+  runtime       Int?      // in minutes
+  posterUrl     String?   @map("poster_url")
+  bannerUrl     String?   @map("banner_url")
+  trailerUrl    String?   @map("trailer_url")
+  director      String?
+  rating        Float?    @map("rating")         // 1-10, IMDB style
+  featured      Boolean   @default(false)
+  published     Boolean   @default(true)
+  viewCount     Int       @default(0) @map("view_count")
+  whereToWatch String?   @db.Text
+  officialSite String?
+  categoryId   String?   @map("category_id")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  category      Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  cast          CastMember[]
+  reviews       Review[]
+  comments      MovieComment[]
+  genres        MovieGenre[]
+  audioLanguages MovieAudioLanguage[]
+  collections   MovieCollection[]
+
+  @@index([categoryId])
+  @@map("movies")
+}
+
+model MovieGenre {
+  movieId   String
+  genreId   String
+  movie     Movie  @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  genre     Genre  @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([movieId, genreId])
+  @@map("movie_genres")
+}
+
+model AudioLanguage {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  movies    MovieAudioLanguage[]
+
+  @@map("audio_languages")
+}
+
+model MovieAudioLanguage {
+  movieId        String
+  audioLanguageId String   @map("audio_language_id")
+  movie          Movie    @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  audioLanguage  AudioLanguage @relation(fields: [audioLanguageId], references: [id], onDelete: Cascade)
+
+  @@id([movieId, audioLanguageId])
+  @@map("movie_audio_languages")
+}
+
+model CastMember {
+  id            String   @id @default(cuid())
+  movieId      String   @map("movie_id")
+  actorName    String   @map("actor_name")
+  characterName String? @map("character_name")
+  order        Int      @default(0)
+
+  movie        Movie    @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@index([movieId])
+  @@map("cast_members")
+}
+
+enum ReviewOrigin {
+  CURATED  // admin/critic reviews
+  USER     // user-submitted reviews
+}
+
+model Review {
+  id           String       @id @default(cuid())
+  movieId      String       @map("movie_id")
+  reviewerName String       @map("reviewer_name")
+  reviewText   String?      @map("review_text") @db.Text
+  rating       Int          // 0-100
+  approved     Boolean      @default(false)
+  origin       ReviewOrigin @default(USER)
+  source       String?      // e.g., "Variety", "Hollywood Reporter"
+  helpfulCount Int          @default(0) @map("helpful_count")
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  movie        Movie        @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@index([movieId])
+  @@index([approved])
+  @@index([origin])
+  @@map("reviews")
+}
+
+model MovieComment {
+  id        String   @id @default(cuid())
+  movieId   String   @map("movie_id")
+  authorName String  @map("author_name")
+  content   String   @db.Text
+  parentId  String?  @map("parent_id")
+  approved  Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  movie     Movie         @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  parent    MovieComment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   MovieComment[] @relation("CommentReplies")
+
+  @@index([movieId])
+  @@index([parentId])
+  @@map("movie_comments")
+}
+
+model UserRequest {
+  id        String   @id @default(cuid())
+  name      String   @map("name")
+  email     String   @map("email")
+  subject   String   @map("subject")
+  message   String   @map("message") @db.Text
+  type      String   @default("general") @map("type") // general, movie_request, feedback
+  status    String   @default("pending") @map("status") // pending, read, resolved
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("user_requests")
+}
+
+model SearchQuery {
+  id           String   @id @default(cuid())
+  query        String   @unique
+  count        Int      @default(0)
+  lastSearched DateTime @default(now()) @map("last_searched")
+
+  @@index([count])
+  @@map("search_queries")
+}
