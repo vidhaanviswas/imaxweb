@@ -11,7 +11,7 @@ export default function AddMoviePage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [audioLanguages, setAudioLanguages] = useState<AudioLanguage[]>([]);
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState<CreateMovieInput & { cast: { actorName: string; characterName: string }[] }>({
+  const [form, setForm] = useState<CreateMovieInput & { cast: { actorName: string; characterName?: string }[] }>({
     title: '',
     description: '',
     releaseDate: new Date().toISOString().slice(0, 10),
