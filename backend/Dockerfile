@@ -7,9 +7,9 @@ COPY prisma ./prisma/
 COPY tsconfig.json ./
 COPY src ./src
 
-RUN npm ci
-RUN npm run build
+RUN npm install
 RUN npx prisma generate
+RUN npm run build
 
 EXPOSE 4000
 
