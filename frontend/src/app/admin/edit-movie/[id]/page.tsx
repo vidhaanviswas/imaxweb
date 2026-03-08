@@ -76,7 +76,7 @@ export default function EditMoviePage() {
         ...form,
         cast: form.cast.filter((c) => c.actorName.trim()).map((c) => ({
           actorName: c.actorName.trim(),
-          characterName: c.characterName.trim() || undefined,
+          characterName: c.characterName?.trim() || undefined,
         })),
       };
       await api.admin.movies.update(token, id, payload);
