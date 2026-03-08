@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Suspense, useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { api, type Movie } from '@/lib/api';
 import { MovieCard } from '@/components/movies/MovieCard';
@@ -9,6 +9,22 @@ import { motion } from 'framer-motion';
 type SortOption = 'relevance' | 'rating_desc' | 'rating_asc' | 'year_desc' | 'year_asc';
 
 export default function SearchPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
+          <div className="flex justify-center py-12">
+            <div className="w-12 h-12 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin" />
+          </div>
+        </div>
+      }
+    >
+      <SearchPageContent />
+    </Suspense>
+  );
+}
+
+function SearchPageContent() {
   const searchParams = useSearchParams();
   const q = searchParams.get('q') || '';
   const [query, setQuery] = useState(q);
