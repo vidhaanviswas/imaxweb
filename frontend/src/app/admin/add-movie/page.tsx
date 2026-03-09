@@ -11,6 +11,8 @@ export default function AddMoviePage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [audioLanguages, setAudioLanguages] = useState<AudioLanguage[]>([]);
   const [loading, setLoading] = useState(false);
+  const [imdbInput, setImdbInput] = useState('');
+  const [omdbLoading, setOmdbLoading] = useState(false);
   const [form, setForm] = useState<CreateMovieInput & { cast: { actorName: string; characterName?: string }[] }>({
     title: '',
     description: '',
@@ -40,6 +42,33 @@ export default function AddMoviePage() {
       api.admin.audioLanguages.list(token).then((res) => setAudioLanguages(res.data)),
     ]).catch(console.error);
   }, []);
+
+  const handleImportFromImdb = async () => {
+    const raw = imdbInput.trim();
+    if (!raw) return;
+    const token = localStorage.getItem('admin_token');
+    if (!token) return;
+    setOmdbLoading(true);
+    try {
+      const res = await api.admin.movies.fromOmdb(token, raw);
+      const data = res.data;
+      setForm((prev) => ({
+        ...prev,
+        ...data,
+        cast:
+          data.cast && data.cast.length
+            ? data.cast.map((c) => ({
+                actorName: c.actorName,
+                characterName: c.characterName ?? '',
+              }))
+            : prev.cast,
+      }));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to import from IMDb');
+    } finally {
+      setOmdbLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,6 +143,30 @@ export default function AddMoviePage() {
       </h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="p-4 rounded-lg glass border border-white/10 space-y-2">
+          <label className="block text-sm font-medium">Import from IMDb</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={imdbInput}
+              onChange={(e) => setImdbInput(e.target.value)}
+              placeholder="Paste IMDb URL or ID (e.g. tt3896198)"
+              className="flex-1 px-3 py-2 rounded-lg bg-background text-sm border border-white/10 focus:border-neon-cyan outline-none"
+            />
+            <button
+              type="button"
+              onClick={handleImportFromImdb}
+              disabled={omdbLoading}
+              className="px-4 py-2 rounded-lg bg-neon-cyan text-background text-sm font-semibold hover:bg-neon-cyan/90 transition disabled:opacity-50"
+            >
+              {omdbLoading ? 'Fetching...' : 'Fetch'}
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Uses OMDb API to pre-fill fields from an IMDb link.
+          </p>
+        </div>
+
         <div>
           <label className="block text-sm font-medium mb-2">Title *</label>
           <input

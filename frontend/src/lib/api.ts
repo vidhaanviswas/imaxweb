@@ -149,6 +149,8 @@ export const api = {
           { headers: { Authorization: `Bearer ${token}` } }
         );
       },
+      fromOmdb: (token: string, imdb: string) =>
+        apiPost<{ data: CreateMovieInput }>('/api/admin/movies/from-omdb', { imdb }, token),
       create: (token: string, data: CreateMovieInput) =>
         apiPost<{ data: Movie }>('/api/admin/movies', data, token),
       update: (token: string, id: string, data: Partial<CreateMovieInput>) =>

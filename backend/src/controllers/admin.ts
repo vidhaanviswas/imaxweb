@@ -38,6 +38,10 @@ const createMovieSchema = z.object({
 
 const updateMovieSchema = createMovieSchema.partial();
 
+const omdbImportSchema = z.object({
+  imdb: z.string().min(3),
+});
+
 const createReviewSchema = z.object({
   movieId: z.string(),
   reviewerName: z.string().min(1),
@@ -295,6 +299,124 @@ export async function deleteMovie(req: Request, res: Response) {
 
   await prisma.movie.delete({ where: { id } });
   res.json({ success: true, message: 'Movie deleted' });
+}
+
+export async function importMovieFromOmdb(req: Request, res: Response) {
+  const { imdb } = omdbImportSchema.parse(req.body);
+
+  const apiKey = process.env.OMDB_API_KEY;
+  if (!apiKey) {
+    throw new AppError('OMDB_API_KEY is not configured on the server', 500);
+  }
+
+  const match = imdb.match(/tt\d+/i);
+  const imdbId = match ? match[0] : imdb.trim();
+  if (!/^tt\d+$/i.test(imdbId)) {
+    throw new AppError('Invalid IMDb URL or ID', 400);
+  }
+
+  const url = `http://www.omdbapi.com/?i=${encodeURIComponent(imdbId)}&plot=full&apikey=${apiKey}`;
+
+  const globalFetch: any = (globalThis as any).fetch;
+  if (!globalFetch) {
+    throw new AppError('Fetch API is not available in this environment', 500);
+  }
+
+  const response = await globalFetch(url);
+  if (!response.ok) {
+    throw new AppError('Failed to fetch data from OMDb', 502);
+  }
+
+  const data = (await response.json()) as any;
+  if (data.Response === 'False') {
+    throw new AppError(data.Error || 'OMDb returned an error', 400);
+  }
+
+  const title = data.Title as string | undefined;
+  if (!title) {
+    throw new AppError('OMDb response did not include a title', 400);
+  }
+
+  const description =
+    data.Plot && data.Plot !== 'N/A'
+      ? (data.Plot as string)
+      : undefined;
+
+  let releaseDate = new Date().toISOString().slice(0, 10);
+  if (data.Released && data.Released !== 'N/A') {
+    const parsed = new Date(data.Released as string);
+    if (!Number.isNaN(parsed.getTime())) {
+      releaseDate = parsed.toISOString().slice(0, 10);
+    }
+  }
+
+  let runtime: number | undefined;
+  if (data.Runtime && typeof data.Runtime === 'string' && data.Runtime.endsWith(' min')) {
+    const n = parseInt(data.Runtime, 10);
+    if (!Number.isNaN(n)) runtime = n;
+  }
+
+  const director =
+    data.Director && data.Director !== 'N/A'
+      ? (data.Director as string)
+      : undefined;
+
+  const posterUrl =
+    data.Poster && data.Poster !== 'N/A'
+      ? (data.Poster as string)
+      : undefined;
+
+  const officialSite =
+    data.Website && data.Website !== 'N/A'
+      ? (data.Website as string)
+      : undefined;
+
+  let rating: number | undefined;
+  if (data.imdbRating && data.imdbRating !== 'N/A') {
+    const r = parseFloat(data.imdbRating as string);
+    if (!Number.isNaN(r)) rating = r;
+  }
+
+  let cast:
+    | {
+        actorName: string;
+        characterName?: string;
+      }[]
+    | undefined;
+  if (data.Actors && data.Actors !== 'N/A') {
+    cast = (data.Actors as string)
+      .split(',')
+      .map((name: string) => ({ actorName: name.trim() }))
+      .filter((c) => c.actorName.length > 0);
+    if (!cast.length) {
+      cast = undefined;
+    }
+  }
+
+  const payload = {
+    title,
+    description,
+    releaseDate,
+    runtime,
+    director,
+    posterUrl,
+    bannerUrl: undefined,
+    trailerUrl: undefined,
+    rating,
+    featured: false,
+    published: true,
+    whereToWatch: undefined,
+    officialSite,
+    categoryId: null,
+    genreIds: [] as string[],
+    audioLanguageIds: [] as string[],
+    cast,
+  };
+
+  res.json({
+    success: true,
+    data: payload,
+  });
 }
 
 export async function importMoviesFromCsv(req: Request, res: Response) {

@@ -4,6 +4,7 @@ import {
   createMovie,
   updateMovie,
   deleteMovie,
+  importMovieFromOmdb,
   addReview,
   approveReview,
   getReviews,
@@ -44,6 +45,7 @@ adminRouter.get('/dashboard', getDashboardStats);
 // Movies CRUD (import-csv before :id so it's not captured)
 adminRouter.get('/movies', getAllAdminMovies);
 adminRouter.post('/movies/import-csv', importMoviesFromCsv);
+adminRouter.post('/movies/from-omdb', importMovieFromOmdb);
 adminRouter.get('/movies/:id', getMovieById);
 adminRouter.post('/movies', createMovie);
 adminRouter.put('/movies/:id', updateMovie);

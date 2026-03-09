@@ -250,3 +250,4 @@ The app stores images in `uploads/` on the server. On Render’s free tier the f
 | **Migration fails** | Check `DATABASE_URL` (use Internal URL from PostgreSQL). Ensure migrations exist in `backend/prisma/migrations/`. |
 | **Build fails** | Root Directory must be `backend`. Build command: `npm install && npx prisma generate && npm run build` |
 | **"Module not found" / Prisma errors** | Prisma must run before build. Order: `prisma generate` → `npm run build` |
+| **OMDb import fails** | Ensure `OMDB_API_KEY` is set in the backend environment and valid. |
