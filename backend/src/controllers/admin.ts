@@ -315,7 +315,7 @@ export async function importMovieFromOmdb(req: Request, res: Response) {
     throw new AppError('Invalid IMDb URL or ID', 400);
   }
 
-  const url = `http://www.omdbapi.com/?i=${encodeURIComponent(imdbId)}&plot=full&apikey=${apiKey}`;
+  const url = `https://www.omdbapi.com/?i=${encodeURIComponent(imdbId)}&plot=full&apikey=${apiKey}`;
 
   const globalFetch: any = (globalThis as any).fetch;
   if (!globalFetch) {
